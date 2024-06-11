@@ -11,24 +11,25 @@
 #include <vector>
 using namespace std;
 
-vector<string> split(string s)
+vector<string> split(string s, string delimiter = " ")
 {
-  vector<string> ans;
-  string temp = "";
-  for (int i = 0; i < s.size(); i++)
+
+  vector<string> result;
+  size_t pos = 0;
+  string token;
+  while ((pos = s.find(delimiter)) != string::npos)
   {
-    if (s[i] == ' ')
-    {
-      ans.push_back(temp);
-      temp = "";
-    }
-    else
-    {
-      temp += s[i];
-    }
+    token = s.substr(0, pos);
+    result.push_back(token);
+    s.erase(0, pos + delimiter.length());
   }
-  ans.push_back(temp);
-  return ans;
+  result.push_back(s);
+  return result;
+}
+
+bool starts_with(string s, string prefix)
+{
+  return s.substr(0, prefix.size()) == prefix;
 }
 
 int main(int argc, char **argv)
@@ -91,17 +92,55 @@ int main(int argc, char **argv)
   std::cout << req << "\n";
   std::string req_str(req);
 
-  vector<string> req_split = split(req_str);
-  string path = req_split[1];
-  cout << path << endl;
+  vector<string> req_split = split(req_str, "\r\n\r\n");
+  string body;
+
+  vector<string> req_headers = split(req_split[0], "\r\n");
+  string status_line = req_headers[0];
+  vector<string> headers(req_headers.begin() + 1, req_headers.end());
+
+  // print everything
+
+  // std::cout << "Status Line: " << status_line << "\n";
+
+  // for (auto header : headers)
+  // {
+  //   std::cout << "Header: " << header << "\n";
+  // }
+
+  // std::cout << "Body: " << body << "\n";
+
+  string path = split(status_line)[1];
+  cout << "Path: " << path << "\n";
   if (path == "/")
   {
     response = "HTTP/1.1 200 OK\r\n\r\n";
+  }
+  else if (starts_with(path, "/echo"))
+  {
+    string echo_param = "/echo/";
+    body = path.substr(echo_param.size());
+    response = "HTTP/1.1 200 OK\r\n\r\n";
+    response += "Content-Type: text/plain\r\nContent-Length: " + to_string(body.size()) + "\r\n\r\n";
+    response += body;
   }
   else
   {
     response = "HTTP/1.1 404 Not Found\r\n\r\n";
   }
+
+  // std::string response;
+
+  // string path = req_split[1];
+  // if (path == "/")
+  // {
+  //   response = "HTTP/1.1 200 OK\r\n\r\n";
+  // }
+  // else
+  // {
+  //   response = "HTTP/1.1 404 Not Found\r\n\r\n";
+  // }
+
   send(clientfd, response.c_str(), response.size(), 0);
 
   close(server_fd);
