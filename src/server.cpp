@@ -11,7 +11,6 @@
 #include <vector>
 using namespace std;
 
-
 vector<string> split(string s, string delimiter = " ")
 {
 
@@ -83,6 +82,21 @@ Response handle_request(Request req)
     res.headers = {"Content-Type: text/plain", "Content-Length: " + to_string(body.size())};
     res.body = body;
   }
+  else if (starts_with(req.path, "/user-agent"))
+  {
+    res.status = "HTTP/1.1 200 OK";
+    // find the user-agent header
+    for (auto header : req.headers)
+    {
+      if (starts_with(header, "User-Agent: "))
+      {
+        cout << header << endl;
+        res.body = header.substr(12);
+        break;
+      }
+    }
+    res.headers = {"Content-Type: text/plain", "Content-Length: " + to_string(req.body.size())};
+  }
   else
   {
     res.status = "HTTP/1.1 404 Not Found";
@@ -96,7 +110,7 @@ Response handle_request(Request req)
 void send_response(int clientfd, Response res)
 {
 
-  // print the response 
+  // print the response
 
   cout << res.status << endl;
   for (auto header : res.headers)
@@ -117,7 +131,6 @@ void send_response(int clientfd, Response res)
   send(clientfd, "\r\n", 2, 0);
   send(clientfd, res.body.c_str(), res.body.size(), 0);
 }
-
 
 int main(int argc, char **argv)
 {
