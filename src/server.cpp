@@ -91,11 +91,12 @@ Response handle_request(Request req)
       if (starts_with(header, "User-Agent: "))
       {
         cout << header << endl;
-        res.body = header.substr(12);
+        const string user_agent_prefix = "User-Agent: ";
+        res.body = header.substr(user_agent_prefix.size());
+        res.headers = {"Content-Type: text/plain", "Content-Length: " + to_string(res.body.length())};
         break;
       }
     }
-    res.headers = {"Content-Type: text/plain", "Content-Length: " + to_string(req.body.size())};
   }
   else
   {
