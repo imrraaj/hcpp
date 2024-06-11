@@ -11,6 +11,7 @@
 #include <vector>
 using namespace std;
 
+
 vector<string> split(string s, string delimiter = " ")
 {
 
@@ -31,6 +32,92 @@ bool starts_with(string s, string prefix)
 {
   return s.substr(0, prefix.size()) == prefix;
 }
+
+struct Request
+{
+  string method;
+  string path;
+  string version;
+  vector<string> headers;
+  string body;
+};
+
+struct Response
+{
+  string status;
+  vector<string> headers;
+  string body;
+};
+
+Request parse_request(char *buf)
+{
+  string req_str(buf);
+  vector<string> headers_body_split = split(req_str, "\r\n\r\n");
+  string body = headers_body_split.size() > 1 ? headers_body_split[1] : "";
+
+  vector<string> req_headers = split(headers_body_split[0], "\r\n");
+  vector<string> headers(req_headers.begin() + 1, req_headers.end());
+
+  string status_line = req_headers[0];
+  vector<string> status_line_split = split(status_line);
+  string method = status_line_split[0];
+  string path = status_line_split[1];
+  string version = status_line_split[2];
+  return Request{method, path, version, headers, body};
+}
+
+Response handle_request(Request req)
+{
+  Response res;
+  if (req.path == "/")
+  {
+    res.status = "HTTP/1.1 200 OK";
+    res.headers = {"Content-Type: text/plain", "Content-Length: 0"};
+    res.body = "";
+  }
+  else if (starts_with(req.path, "/echo"))
+  {
+    string echo_param = "/echo/";
+    string body = req.path.substr(echo_param.size());
+    res.status = "HTTP/1.1 200 OK";
+    res.headers = {"Content-Type: text/plain", "Content-Length: " + to_string(body.size())};
+    res.body = body;
+  }
+  else
+  {
+    res.status = "HTTP/1.1 404 Not Found";
+    res.headers = {"Content-Type: text/html", "Content-Length: 0"};
+    res.body = "";
+  }
+
+  return res;
+}
+
+void send_response(int clientfd, Response res)
+{
+
+  // print the response 
+
+  cout << res.status << endl;
+  for (auto header : res.headers)
+  {
+    cout << header << endl;
+  }
+  cout << res.body << endl;
+
+  cout << "\n\n\n\n";
+
+  send(clientfd, res.status.c_str(), res.status.size(), 0);
+  send(clientfd, "\r\n", 2, 0);
+  for (auto header : res.headers)
+  {
+    send(clientfd, header.c_str(), header.size(), 0);
+    send(clientfd, "\r\n", 2, 0);
+  }
+  send(clientfd, "\r\n", 2, 0);
+  send(clientfd, res.body.c_str(), res.body.size(), 0);
+}
+
 
 int main(int argc, char **argv)
 {
@@ -83,23 +170,10 @@ int main(int argc, char **argv)
   std::cout << "Waiting for a client to connect...\n";
 
   int clientfd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
-  std::cout << "Client connected\n";
 
   char req[1024];
-  std::string response = "HTTP/1.1 200 OK\r\n\r\n";
-
   recv(clientfd, req, 1024, 0);
-  std::cout << req << "\n";
-  std::string req_str(req);
-
-  vector<string> req_split = split(req_str, "\r\n\r\n");
-  string body;
-
-  vector<string> req_headers = split(req_split[0], "\r\n");
-  string status_line = req_headers[0];
-  vector<string> headers(req_headers.begin() + 1, req_headers.end());
-
-  // print everything
+  Request request = parse_request(req);
 
   // std::cout << "Status Line: " << status_line << "\n";
 
@@ -110,38 +184,8 @@ int main(int argc, char **argv)
 
   // std::cout << "Body: " << body << "\n";
 
-  string path = split(status_line)[1];
-  cout << "Path: " << path << "\n";
-  if (path == "/")
-  {
-    response = "HTTP/1.1 200 OK\r\n\r\n";
-  }
-  else if (starts_with(path, "/echo"))
-  {
-    string echo_param = "/echo/";
-    body = path.substr(echo_param.size());
-    response = "HTTP/1.1 200 OK\r\n\r\n";
-    response += "Content-Type: text/plain\r\nContent-Length: " + to_string(body.size()) + "\r\n\r\n";
-    response += body;
-  }
-  else
-  {
-    response = "HTTP/1.1 404 Not Found\r\n\r\n";
-  }
-
-  // std::string response;
-
-  // string path = req_split[1];
-  // if (path == "/")
-  // {
-  //   response = "HTTP/1.1 200 OK\r\n\r\n";
-  // }
-  // else
-  // {
-  //   response = "HTTP/1.1 404 Not Found\r\n\r\n";
-  // }
-
-  send(clientfd, response.c_str(), response.size(), 0);
+  Response res = handle_request(request);
+  send_response(clientfd, res);
 
   close(server_fd);
 
