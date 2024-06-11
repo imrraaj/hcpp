@@ -183,24 +183,15 @@ int main(int argc, char **argv)
 
   std::cout << "Waiting for a client to connect...\n";
 
-  int clientfd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
-
-  char req[1024];
-  recv(clientfd, req, 1024, 0);
-  Request request = parse_request(req);
-
-  // std::cout << "Status Line: " << status_line << "\n";
-
-  // for (auto header : headers)
-  // {
-  //   std::cout << "Header: " << header << "\n";
-  // }
-
-  // std::cout << "Body: " << body << "\n";
-
-  Response res = handle_request(request);
-  send_response(clientfd, res);
-
+  while (1)
+  {
+    int clientfd = accept(server_fd, (struct sockaddr *)&client_addr, (socklen_t *)&client_addr_len);
+    char req[1024];
+    recv(clientfd, req, 1024, 0);
+    Request request = parse_request(req);
+    Response res = handle_request(request);
+    send_response(clientfd, res);
+  }
   close(server_fd);
 
   return 0;
