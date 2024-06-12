@@ -92,7 +92,7 @@ Response handle_request(Request req)
 		{
 			string echo_param = "/echo/";
 			string body = req.path.substr(echo_param.size());
-			vector<string> content_encoding = split(req.headers["Accept-Encoding"], ",");
+			vector<string> content_encoding = split(req.headers["Accept-Encoding"], ", ");
 
 			bool is_valid_encoding = false;
 			for (auto &x : content_encoding)
