@@ -9,6 +9,7 @@
 #include <netdb.h>
 
 #include <vector>
+#include <fstream>
 using namespace std;
 
 vector<string> split(string s, string delimiter = " ")
@@ -47,6 +48,8 @@ struct Response
   vector<string> headers;
   string body;
 };
+
+string directory = "";
 
 Request parse_request(char *buf)
 {
@@ -98,6 +101,28 @@ Response handle_request(Request req)
       }
     }
   }
+  else if (starts_with(req.path, "/files"))
+  {
+    string filename_param = "/files/";
+    string filename = req.path.substr(filename_param.size());
+
+    string file_path = directory + filename;
+    ifstream file(file_path);
+    if (file.is_open())
+    {
+      string file_contents((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+      res.status = "HTTP/1.1 200 OK";
+      res.headers = {"Content-Type: application/octet-stream", "Content-Length: " + to_string(file_contents.size())};
+      res.body = file_contents;
+    }
+    else
+    {
+      res.status = "HTTP/1.1 404 Not Found";
+      res.headers = {"Content-Type: text/html", "Content-Length: 0"};
+      res.body = "";
+    }
+    file.close();
+  }
   else
   {
     res.status = "HTTP/1.1 404 Not Found";
@@ -135,6 +160,25 @@ void send_response(int clientfd, Response res)
 
 int main(int argc, char **argv)
 {
+
+  // get the --directory flag value
+
+  for (int i = 0; i < argc; i++)
+  {
+    if (string(argv[i]) == "--directory")
+    {
+      if (i + 1 < argc)
+      {
+        directory = string(argv[i + 1]);
+      }
+      else
+      {
+        cout << "Please provide a directory path" << endl;
+        return 1;
+      }
+    }
+  }
+
   // Flush after every std::cout / std::cerr
   std::cout << std::unitbuf;
   std::cerr << std::unitbuf;
