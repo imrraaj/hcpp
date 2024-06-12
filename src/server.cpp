@@ -112,6 +112,7 @@ Response handle_request(Request req)
 			res.status = "HTTP/1.1 200 OK";
 			res.headers = {{"Content-Type", "text/plain"},
 						   {"Content-Length", to_string(req.headers["User-Agent"].size())}};
+			res.body = req.headers["User-Agent"];
 		}
 
 		else if (starts_with(req.path, "/files"))
