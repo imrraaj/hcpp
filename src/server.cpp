@@ -119,6 +119,7 @@ Response handle_request(Request req)
 		{
 			string filename_param = "/files/";
 			string filename = req.path.substr(filename_param.size());
+			int content_length = stoi(req.headers["Content-Length"]);
 
 			string file_path = directory + filename;
 			ifstream file(file_path);
@@ -128,7 +129,7 @@ Response handle_request(Request req)
 				res.status = "HTTP/1.1 200 OK";
 				res.headers = {{"Content-Type", "application/octet-stream"},
 							   {"Content-Length", to_string(file_contents.size())}};
-				res.body = file_contents;
+				res.body = file_contents.substr(0, content_length);
 			}
 			else
 			{
