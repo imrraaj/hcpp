@@ -7,11 +7,16 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <zlib.h>
 
 #include <vector>
 #include <map>
 #include <fstream>
 using namespace std;
+
+#define MOD_GZIP_ZLIB_WINDOWSIZE 15
+#define MOD_GZIP_ZLIB_CFACTOR 9
+#define MOD_GZIP_ZLIB_BSIZE 8096
 
 vector<string> split(string s, string delimiter = " ")
 {
@@ -32,6 +37,50 @@ vector<string> split(string s, string delimiter = " ")
 bool starts_with(string s, string prefix)
 {
 	return s.substr(0, prefix.size()) == prefix;
+}
+
+string compress_gzip(string s)
+{
+	z_stream zs;
+	memset(&zs, 0, sizeof(zs));
+	if (deflateInit2(&zs,
+					 Z_BEST_COMPRESSION,
+					 Z_DEFLATED,
+					 MOD_GZIP_ZLIB_WINDOWSIZE + 16,
+					 MOD_GZIP_ZLIB_CFACTOR,
+					 Z_DEFAULT_STRATEGY) != Z_OK)
+	{
+		throw(std::runtime_error("deflateInit2 failed while compressing."));
+	}
+
+	zs.next_in = (Bytef *)s.data();
+	zs.avail_in = s.size();
+
+	int ret;
+	char outbuffer[32768];
+	std::string outstring;
+
+	do
+	{
+		zs.next_out = reinterpret_cast<Bytef *>(outbuffer);
+		zs.avail_out = sizeof(outbuffer);
+
+		ret = deflate(&zs, Z_FINISH);
+
+		if (outstring.size() < zs.total_out)
+		{
+			outstring.append(outbuffer,
+							 zs.total_out - outstring.size());
+		}
+	} while (ret == Z_OK);
+
+	deflateEnd(&zs);
+
+	if (ret != Z_STREAM_END)
+	{
+		cout << "Exception during zlib compression: (" << ret << ") " << zs.msg;
+	}
+	return outstring;
 }
 
 struct Request
@@ -100,18 +149,19 @@ Response handle_request(Request req)
 				if (x == "gzip")
 				{
 					is_valid_encoding = true;
+					res.body = compress_gzip(body);
 					res.headers = {{"Content-Type", "text/plain"},
-								   {"Content-Length", to_string(body.size())},
+								   {"Content-Length", to_string(res.body.size())},
 								   {"Content-Encoding", "gzip"}};
 				}
 			}
 			if (!is_valid_encoding)
 			{
+				res.body = body;
 				res.headers = {{"Content-Type", "text/plain"},
-							   {"Content-Length", to_string(body.size())}};
+							   {"Content-Length", to_string(res.body.size())}};
 			}
 			res.status = "HTTP/1.1 200 OK";
-			res.body = body;
 		}
 		else if (starts_with(req.path, "/user-agent"))
 		{
