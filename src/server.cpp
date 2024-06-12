@@ -71,49 +71,60 @@ Request parse_request(char *buf)
 Response handle_request(Request req)
 {
   Response res;
-  if (req.path == "/")
+  if (req.method == "GET")
   {
-    res.status = "HTTP/1.1 200 OK";
-    res.headers = {"Content-Type: text/plain", "Content-Length: 0"};
-    res.body = "";
-  }
-  else if (starts_with(req.path, "/echo"))
-  {
-    string echo_param = "/echo/";
-    string body = req.path.substr(echo_param.size());
-    res.status = "HTTP/1.1 200 OK";
-    res.headers = {"Content-Type: text/plain", "Content-Length: " + to_string(body.size())};
-    res.body = body;
-  }
-  else if (starts_with(req.path, "/user-agent"))
-  {
-    res.status = "HTTP/1.1 200 OK";
-    // find the user-agent header
-    for (auto header : req.headers)
+
+    if (req.path == "/")
     {
-      if (starts_with(header, "User-Agent: "))
+      res.status = "HTTP/1.1 200 OK";
+      res.headers = {"Content-Type: text/plain", "Content-Length: 0"};
+      res.body = "";
+    }
+    else if (starts_with(req.path, "/echo"))
+    {
+      string echo_param = "/echo/";
+      string body = req.path.substr(echo_param.size());
+      res.status = "HTTP/1.1 200 OK";
+      res.headers = {"Content-Type: text/plain", "Content-Length: " + to_string(body.size())};
+      res.body = body;
+    }
+    else if (starts_with(req.path, "/user-agent"))
+    {
+      res.status = "HTTP/1.1 200 OK";
+      // find the user-agent header
+      for (auto header : req.headers)
       {
-        cout << header << endl;
-        const string user_agent_prefix = "User-Agent: ";
-        res.body = header.substr(user_agent_prefix.size());
-        res.headers = {"Content-Type: text/plain", "Content-Length: " + to_string(res.body.length())};
-        break;
+        if (starts_with(header, "User-Agent: "))
+        {
+          cout << header << endl;
+          const string user_agent_prefix = "User-Agent: ";
+          res.body = header.substr(user_agent_prefix.size());
+          res.headers = {"Content-Type: text/plain", "Content-Length: " + to_string(res.body.length())};
+          break;
+        }
       }
     }
-  }
-  else if (starts_with(req.path, "/files"))
-  {
-    string filename_param = "/files/";
-    string filename = req.path.substr(filename_param.size());
-
-    string file_path = directory + filename;
-    ifstream file(file_path);
-    if (file.is_open())
+    else if (starts_with(req.path, "/files"))
     {
-      string file_contents((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
-      res.status = "HTTP/1.1 200 OK";
-      res.headers = {"Content-Type: application/octet-stream", "Content-Length: " + to_string(file_contents.size())};
-      res.body = file_contents;
+      string filename_param = "/files/";
+      string filename = req.path.substr(filename_param.size());
+
+      string file_path = directory + filename;
+      ifstream file(file_path);
+      if (file.is_open())
+      {
+        string file_contents((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
+        res.status = "HTTP/1.1 200 OK";
+        res.headers = {"Content-Type: application/octet-stream", "Content-Length: " + to_string(file_contents.size())};
+        res.body = file_contents;
+      }
+      else
+      {
+        res.status = "HTTP/1.1 404 Not Found";
+        res.headers = {"Content-Type: text/html", "Content-Length: 0"};
+        res.body = "";
+      }
+      file.close();
     }
     else
     {
@@ -121,15 +132,34 @@ Response handle_request(Request req)
       res.headers = {"Content-Type: text/html", "Content-Length: 0"};
       res.body = "";
     }
-    file.close();
-  }
-  else
-  {
-    res.status = "HTTP/1.1 404 Not Found";
-    res.headers = {"Content-Type: text/html", "Content-Length: 0"};
-    res.body = "";
   }
 
+  else if (req.method == "POST")
+  {
+    if (starts_with(req.path, "/files"))
+    {
+      string filename_param = "/files/";
+      string filename = req.path.substr(filename_param.size());
+
+      string file_path = directory + filename;
+      ofstream file(file_path);
+
+      if (file.is_open())
+      {
+        file << req.body;
+        file.close();
+        res.status = "HTTP/1.1 201 Created";
+        res.headers = {"Content-Type: text/html", "Content-Length: 0"};
+        res.body = "";
+      }
+      else
+      {
+        res.status = "HTTP/1.1 404 Not Found";
+        res.headers = {"Content-Type: text/html", "Content-Length: 0"};
+        res.body = "";
+      }
+    }
+  }
   return res;
 }
 
