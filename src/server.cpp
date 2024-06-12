@@ -92,14 +92,20 @@ Response handle_request(Request req)
 		{
 			string echo_param = "/echo/";
 			string body = req.path.substr(echo_param.size());
-			string content_encoding = req.headers["Accept-Encoding"];
-			if (content_encoding == "gzip")
+			vector<string> content_encoding = split(req.headers["Accept-Encoding"], ",");
+
+			bool is_valid_encoding = false;
+			for (auto &x : content_encoding)
 			{
-				res.headers = {{"Content-Type", "text/plain"},
-							   {"Content-Length", to_string(body.size())},
-							   {"Content-Encoding", "gzip"}};
+				if (x == "gzip")
+				{
+					is_valid_encoding = true;
+					res.headers = {{"Content-Type", "text/plain"},
+								   {"Content-Length", to_string(body.size())},
+								   {"Content-Encoding", "gzip"}};
+				}
 			}
-			else
+			if (!is_valid_encoding)
 			{
 				res.headers = {{"Content-Type", "text/plain"},
 							   {"Content-Length", to_string(body.size())}};
