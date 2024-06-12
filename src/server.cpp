@@ -125,7 +125,7 @@ Response handle_request(Request req)
 			{
 				string file_contents((istreambuf_iterator<char>(file)), istreambuf_iterator<char>());
 				res.status = "HTTP/1.1 200 OK";
-				res.headers = {{"Content-Type", "text/plain"},
+				res.headers = {{"Content-Type", "application/octet-stream"},
 							   {"Content-Length", to_string(file_contents.size())}};
 				res.body = file_contents;
 			}
